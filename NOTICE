@@ -1,0 +1,14 @@
+Cloud in a Bottle packaging for Nextcloud
+
+The MIT license in LICENSE applies to the original Cloud in a Bottle
+packaging and integration code in this repository, including its original
+authentication proxy, startup and installation hooks, manifest, and documentation.
+
+Upstream software retains its own licenses and copyright notices:
+- Nextcloud server: https://github.com/nextcloud/server
+- Nextcloud apps, including user_saml: https://github.com/nextcloud/user_saml
+- Nextcloud container packaging: https://github.com/nextcloud/docker
+
+The packaging grant does not relicense upstream applications, copied or
+adapted upstream material, dependencies, or software supplied by base images.
+Changes applied to upstream programs retain the applicable upstream terms.
