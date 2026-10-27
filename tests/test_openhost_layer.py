@@ -52,14 +52,14 @@ def test_preconfigured_apps_are_enabled(nextcloud: OpenhostStack) -> None:
         assert _path(response).startswith(f"/index.php/apps/{app}"), f"app {app}\n{_context(nextcloud, response)}"
 
 
-def test_anonymous_gets_nextcloud_login(nextcloud: OpenhostStack) -> None:
-    # Every path is public at the router, so the auth proxy alone decides who's the owner.
-    response = requests.get(
-        f"{nextcloud.url}/index.php/settings/user", headers=HTML, allow_redirects=False, timeout=60
+def test_anonymous_is_not_signed_in(nextcloud: OpenhostStack) -> None:
+    # Every path is public at the router, so the auth proxy alone decides who's the owner: user_saml signs in whoever
+    # reaches the login page carrying X-Openhost-User, so follow the whole redirect chain.
+    response = requests.get(f"{nextcloud.url}/index.php/settings/user", headers=HTML, timeout=60)
+    assert _path(response) != "/index.php/settings/user", (
+        f"anonymous visitor got the page\n{_context(nextcloud, response)}"
     )
-    assert response.is_redirect and "/login" in response.headers["Location"], (
-        f"anonymous request: {response.status_code} {response.headers}"
-    )
+    assert 'data-user="admin"' not in response.text, f"anonymous visitor is signed in\n{_context(nextcloud, response)}"
 
 
 def test_native_clients_can_pair_and_sync(nextcloud: OpenhostStack) -> None:
