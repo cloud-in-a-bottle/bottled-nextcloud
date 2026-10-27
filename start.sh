@@ -697,7 +697,9 @@ export TRUSTED_PROXIES="127.0.0.1/32"
 # overwrite.* tells Nextcloud the request URL it would have received
 # directly even though it actually got it from a reverse proxy.
 export OVERWRITEHOST="$DOMAIN"
-case "${OPENHOST_ZONE_DOMAIN:-}" in
+# A dev router's zone domain includes its port (eg harness.localhost:59285),
+# so match on the hostname alone.  $DOMAIN already carries that port.
+case "${OPENHOST_ZONE_DOMAIN%%:*}" in
     lvh.me|*.lvh.me|localhost|*.localhost)
         export OVERWRITEPROTOCOL="http"
         export OVERWRITECLIURL="http://$DOMAIN"
