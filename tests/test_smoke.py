@@ -1,5 +1,6 @@
 import time
 
+import requests
 from openhost_test_harness import OpenhostStack
 
 
@@ -23,13 +24,19 @@ def test_redirects_stay_on_router_url(stack: OpenhostStack) -> None:
     # must point back at the router URL (http, with the port), not https.
     # "/" serves a 200 placeholder until Nextcloud's slow first boot finishes; then it redirects (to the login
     # or the default app).
+    # The connection can also drop while Apache comes up, so retry that too.
     deadline = time.monotonic() + 600
     while True:
-        response = stack.owner_session.get(
-            f"{stack.url}/", headers={"Accept": "text/html"}, allow_redirects=False, timeout=30
-        )
-        if response.is_redirect or time.monotonic() > deadline:
-            break
+        try:
+            response = stack.owner_session.get(
+                f"{stack.url}/", headers={"Accept": "text/html"}, allow_redirects=False, timeout=30
+            )
+        except requests.ConnectionError:
+            if time.monotonic() > deadline:
+                raise
+        else:
+            if response.is_redirect or time.monotonic() > deadline:
+                break
         time.sleep(5)
     assert response.is_redirect, (
         f"GET / never redirected; last status {response.status_code}: {response.text[:500]}\n\n"
