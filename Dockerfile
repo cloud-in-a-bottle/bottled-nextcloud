@@ -12,7 +12,7 @@
 # wrapper that boots Postgres and Redis first.
 
 # Pinned by exact version and multi-arch index digest; bump both to upgrade.
-FROM docker.io/library/nextcloud:33.0.10-apache@sha256:bbe2cc1b48a865d62b8a73a68999afa6f2a93a9c4f5d575c0712660044afa4db
+FROM docker.io/library/nextcloud:34.0.5-apache@sha256:1f9212adecae32010cdbf137d7e0db78d08c696dc3e77f1eddcbf902d10209b4
 
 # The official Nextcloud entrypoint runs Apache on port 80.  We move
 # it to 8081 so our auth-sidecar can be the only thing listening on
