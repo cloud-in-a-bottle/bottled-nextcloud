@@ -58,7 +58,7 @@ occ() {
 #   notes     — Markdown notes (also powers the mobile Notes app)
 #   tasks     — CalDAV VTODO task lists (pairs with calendar)
 #   deck      — Kanban boards
-DEFAULT_APPS="calendar contacts notes tasks deck"
+DEFAULT_APPS="none"  # TEMP
 
 RAW_APPS="${NEXTCLOUD_PRECONFIGURED_APPS:-$DEFAULT_APPS}"
 

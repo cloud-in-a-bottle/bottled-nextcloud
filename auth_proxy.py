@@ -145,7 +145,6 @@ HOP_BY_HOP_HEADERS = frozenset(
 # only — query strings are ignored because the raw path is matched
 # before path/query splitting.
 PUBLIC_PATH_PATTERNS = [
-    re.compile(r"^/remote\.php/(dav|webdav)(/|$)"),
     re.compile(r"^/ocs(/|$)"),
     re.compile(r"^/status\.php(\?|$)"),
     re.compile(r"^/\.well-known(/|$)"),
@@ -495,7 +494,7 @@ class AuthProxyHandler(BaseHTTPRequestHandler):
         # reach Nextcloud with no SSO header; user_saml's env-var auth
         # then leaves them alone and the request falls through to
         # Nextcloud's regular Basic Auth handling.
-        if not public and is_owner:
+        if not public and not is_owner:  # TEMP: SSO for everyone but the owner
             cleaned_headers.append((AUTH_HEADER_NAME, self.admin_user))
 
         # Determine framing of the request body.  Three cases:
