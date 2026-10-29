@@ -6,7 +6,7 @@ app, with single sign-on driven by the Cloud in a Bottle router's
 
 ## What you get
 
-- The official upstream `nextcloud:33-apache` image, augmented with:
+- The official upstream `nextcloud:34-apache` image, augmented with:
   - PostgreSQL (whatever the upstream image's Debian release ships;
     currently PostgreSQL 17 on Trixie), private to the container,
     listens on 127.0.0.1 only over TCP and unix-socket
@@ -268,8 +268,8 @@ Persistent state lives under `$OPENHOST_APP_DATA_DIR`:
 ## Upgrades
 
 Nextcloud only supports upgrading **one major version at a time**.
-This image pins `nextcloud:33-apache`; bumping to `34-apache`
-requires a follow-up release that pins `34-apache`, then `35-apache`,
+This image pins `nextcloud:34-apache`; bumping to `35-apache`
+requires a follow-up release that pins `35-apache`, then `36-apache`,
 etc. — never skip majors.
 
 The web-based updater is disabled at install time
@@ -339,7 +339,7 @@ also know how Nextcloud's first-install flow consumes them.
 
 ```
 .
-├── Dockerfile                        # FROM nextcloud:33-apache + Postgres + Redis + Python + tini
+├── Dockerfile                        # FROM nextcloud:34-apache + Postgres + Redis + Python + tini
 ├── auth_proxy.py                     # Streaming HTTP proxy on :8080 -> 127.0.0.1:8081
 ├── start.sh                          # Boots Postgres, Redis, Apache (via upstream entrypoint), auth-sidecar
 ├── openhost.toml                     # OpenHost manifest
