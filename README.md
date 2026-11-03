@@ -1,5 +1,7 @@
 # bottled-nextcloud
 
+> **Archived: no longer maintained, and removed from the Cloud in a Bottle catalog.** Nextcloud doesn't fit Cloud in a Bottle well: it only supports upgrading one major version at a time (34 → 35 → 36, never skipping one), and we can't control when users update their apps, so an instance that misses an update can end up on a version it can't upgrade from. Existing installs keep running but won't get updates; to keep using Nextcloud, run it from a fork and upgrade one major version at a time.
+
 Nextcloud (files / calendar / contacts / etc.) packaged as a Cloud in a Bottle
 app, with single sign-on driven by the Cloud in a Bottle router's
 `X-OpenHost-Is-Owner` trusted header.
