@@ -734,6 +734,16 @@ log "starting auth-proxy on :${AUTH_PROXY_LISTEN_PORT:-8080} (before nextcloud i
 python3 /usr/local/bin/auth_proxy.py &
 PROXY_PID=$!
 
+# The last before-starting hook (99-openhost-entrypoint-done.sh)
+# touches this file, which tells us the upstream entrypoint has
+# finished its install/upgrade work (and every other hook) and is
+# about to exec Apache.  See the readiness wait below.
+ENTRYPOINT_DONE_DIR=/run/openhost-nextcloud
+export OPENHOST_ENTRYPOINT_DONE_FILE="$ENTRYPOINT_DONE_DIR/entrypoint-done"
+mkdir -p "$ENTRYPOINT_DONE_DIR"
+rm -f "$OPENHOST_ENTRYPOINT_DONE_FILE"
+chown www-data:www-data "$ENTRYPOINT_DONE_DIR" 2>/dev/null || true
+
 log "starting nextcloud (apache2-foreground via upstream entrypoint)"
 # The upstream ENTRYPOINT script runs install/upgrade hooks (which
 # includes our /docker-entrypoint-hooks.d/post-installation/01-openhost-sso.sh)
@@ -742,8 +752,43 @@ log "starting nextcloud (apache2-foreground via upstream entrypoint)"
 /entrypoint.sh apache2-foreground &
 APACHE_PID=$!
 
-# Wait for Apache to bind 127.0.0.1:8081 before starting the sidecar
-# so the very first request doesn't 502.  We try ``APACHE_READY_TIMEOUT``
+apache_listening() {
+    APACHE_PORT="${APACHE_PORT:-8081}" python3 -c '
+import os, socket, sys
+with socket.socket() as s:
+    s.settimeout(0.5)
+    sys.exit(0 if s.connect_ex(("127.0.0.1", int(os.environ["APACHE_PORT"]))) == 0 else 1)
+' 2>/dev/null
+}
+
+# First wait, with NO time limit, for the upstream entrypoint to finish
+# installing or upgrading Nextcloud (first-boot install, ``occ upgrade``
+# on a new major, app-store updates, our post-installation hooks).
+# That can take minutes on a slow host, and killing it partway through
+# ``occ upgrade`` leaves the instance half-migrated, so no clock runs
+# here: we stop waiting only when the entrypoint signals it's done (the
+# marker the last before-starting hook touches), when Apache is already
+# listening (in case the marker couldn't be written), or when the
+# entrypoint exits.  The auth-proxy keeps serving its cold-start
+# placeholder meanwhile.
+log "waiting for the upstream entrypoint's install/upgrade step (no time limit)"
+entrypoint_wait=0
+while [[ ! -e "$OPENHOST_ENTRYPOINT_DONE_FILE" ]] && ! apache_listening; do
+    if ! kill -0 "$APACHE_PID" 2>/dev/null; then
+        log "FATAL: the upstream entrypoint exited during install/upgrade"
+        wait "$APACHE_PID" || true
+        exit 1
+    fi
+    sleep 1
+    entrypoint_wait=$((entrypoint_wait + 1))
+    if (( entrypoint_wait % 60 == 0 )); then
+        log "install/upgrade still running after ${entrypoint_wait}s"
+    fi
+done
+log "install/upgrade step finished after ${entrypoint_wait}s"
+
+# Then wait for Apache to bind 127.0.0.1:8081 before treating the app
+# as up.  Only this step has a deadline: we try ``APACHE_READY_TIMEOUT``
 # times at 1s intervals.  If Apache stays alive but never binds the
 # port (e.g. a misconfigured vhost that aborts during ServerName
 # resolution), we treat that as a fatal startup error rather than
@@ -755,12 +800,7 @@ if ! [[ "$APACHE_READY_TIMEOUT" =~ ^[0-9]+$ ]] || (( APACHE_READY_TIMEOUT < 1 ))
 fi
 apache_ready=0
 for _ in $(seq 1 "$APACHE_READY_TIMEOUT"); do
-    if APACHE_PORT="${APACHE_PORT:-8081}" python3 -c '
-import os, socket, sys
-with socket.socket() as s:
-    s.settimeout(0.5)
-    sys.exit(0 if s.connect_ex(("127.0.0.1", int(os.environ["APACHE_PORT"]))) == 0 else 1)
-' 2>/dev/null; then
+    if apache_listening; then
         log "apache is listening"
         apache_ready=1
         break

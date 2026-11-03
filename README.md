@@ -276,6 +276,8 @@ The web-based updater is disabled at install time
 (`upgrade.disable-web=true` set by the post-installation hook).
 Upgrades happen only by rebuilding the image with a newer base.
 
+`start.sh` never times out while the upstream entrypoint is installing or upgrading: the last `before-starting` hook (`99-openhost-entrypoint-done.sh`) marks that step done, and only then does the `APACHE_READY_TIMEOUT` clock start. If an upgrade is interrupted anyway (the container is stopped mid-`occ upgrade`), the next boot finishes it: `00-openhost-finish-upgrade.sh` checks `occ status` and, if the database still needs an upgrade, runs `occ upgrade` and turns maintenance mode off.
+
 ## Environment variables
 
 | Var | Default | Purpose |
@@ -285,7 +287,7 @@ Upgrades happen only by rebuilding the image with a newer base.
 | `NEXTCLOUD_DOMAIN` | `${OPENHOST_APP_NAME}.${OPENHOST_ZONE_DOMAIN}` | The public hostname the app is served at; used for `trusted_domains` and `overwrite.*`. |
 | `AUTH_PROXY_LISTEN_PORT` | `8080` | The port the auth-sidecar binds. Must match `[runtime.container].port` in `openhost.toml`. |
 | `APACHE_PORT` | `8081` | The port Apache binds inside the container; the auth-sidecar proxies to `127.0.0.1:$APACHE_PORT`. The value is baked into Apache's `ports.conf` and the default vhost at build time via `sed`, AND read at runtime by `start.sh` (for the readiness probe) and `auth_proxy.py` (for the upstream target). Setting this at runtime changes only the readiness probe and proxy target — Apache itself is still bound to the build-time value, so a runtime override would point the proxy at a port nothing is listening on. **Effectively build-time only.** Operators wanting a different port must rebuild the image. |
-| `APACHE_READY_TIMEOUT` | `90` | Seconds to wait for Apache to bind its listening port before declaring startup failed. |
+| `APACHE_READY_TIMEOUT` | `90` | Seconds to wait for Apache to bind its listening port, counted from when the upstream entrypoint's install/upgrade step has finished, before declaring startup failed. The install/upgrade step itself has no time limit. |
 | `REDIS_READY_TIMEOUT` | `30` | Seconds to wait for Redis to respond to PING before declaring startup failed. |
 | `PG_WATCHDOG_INTERVAL` | `15` | Seconds between Postgres `pg_isready` probes. Three consecutive failures terminate the container so Cloud in a Bottle restarts it. |
 | `AUTH_PROXY_LOG_LEVEL` | `INFO` | Python logging level for the sidecar. Set to `DEBUG` for verbose per-request logging (helpful for diagnosing routing/SSO issues). |
@@ -347,6 +349,8 @@ also know how Nextcloud's first-install flow consumes them.
 │   ├── post-installation/
 │   │   └── 01-openhost-sso.sh        # Install + configure user_saml on first boot
 │   └── before-starting/
-│       └── 00-openhost-overwrite.sh  # Re-stamp trusted_*/overwrite.* AND user_saml SSO settings every boot
+│       ├── 00-openhost-finish-upgrade.sh   # Finish an interrupted occ upgrade
+│       ├── 00-openhost-overwrite.sh        # Re-stamp trusted_*/overwrite.* AND user_saml SSO settings every boot
+│       └── 99-openhost-entrypoint-done.sh  # Tell start.sh the install/upgrade step is done
 └── README.md                         # This file.
 ```
